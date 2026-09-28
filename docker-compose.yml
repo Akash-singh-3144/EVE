@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: eve
+      POSTGRES_PASSWORD: evepassword
+      POSTGRES_DB: eve_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eve -d eve_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    environment:
+      # You can create a .env file locally with the real Neon URL so GitHub doesn't see your password!
+      - DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://eve:evepassword@db:5432/eve_db}
+      - SECRET_KEY=supersecretkey123
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=30
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
